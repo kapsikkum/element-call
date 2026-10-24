@@ -38,6 +38,44 @@ export interface MudrixCallState {
   layout: "grid" | "spotlight" | null;
 }
 
+/** Plain copies of one peer connection's RTCStatsReport entries, for the Mudrix stats panel. */
+export type MudrixStatsEntry = Record<string, unknown> & { id: string; type: string };
+
+export interface MudrixConnectionStats {
+  /** The LiveKit SFU this connection talks to. */
+  server: string | null;
+  publisher: MudrixStatsEntry[];
+  subscriber: MudrixStatsEntry[];
+}
+
+// The stats types the panel reads; the rest (certificates, media sources, …) are dropped.
+const STATS_TYPES = new Set([
+  "candidate-pair",
+  "local-candidate",
+  "remote-candidate",
+  "transport",
+  "outbound-rtp",
+  "inbound-rtp",
+  "remote-inbound-rtp",
+  "codec",
+]);
+
+async function readStats(
+  pc: { getStats(): Promise<RTCStatsReport> } | undefined,
+): Promise<MudrixStatsEntry[]> {
+  if (!pc) return [];
+  try {
+    const report = await pc.getStats();
+    const entries: MudrixStatsEntry[] = [];
+    report.forEach((stat: RTCStats) => {
+      if (STATS_TYPES.has(stat.type)) entries.push({ ...stat } as MudrixStatsEntry);
+    });
+    return entries;
+  } catch {
+    return [];
+  }
+}
+
 export interface MudrixCallBridge {
   toggleScreenShare(): void;
   /** A reaction by its name in ReactionSet ("thumbsup", "party", …). */
@@ -47,6 +85,8 @@ export interface MudrixCallBridge {
   setSetting(key: string, value: boolean): void;
   setLayout(layout: "grid" | "spotlight"): void;
   /** Calls `listener` now and on every change; returns an unsubscribe. */
+  /** WebRTC stats for every LiveKit connection in the call. */
+  getStats(): Promise<MudrixConnectionStats[]>;
   subscribe(listener: (state: MudrixCallState) => void): () => void;
   reactions: readonly ReactionOption[];
 }
@@ -105,6 +145,27 @@ export function useMudrixCallBridge(
         return (): void => sub.unsubscribe();
       },
       reactions: ReactionSet,
+      getStats: async () =>
+        Promise.all(
+          vm.allConnections$.value.getConnections().map(async (connection) => {
+            const room = connection.livekitRoom;
+            const pcs = room.engine.pcManager;
+            let server: string | null = null;
+            try {
+              server = new URL(
+                room.engine.client.ws?.url ??
+                  connection.transport.livekit_service_url,
+              ).host;
+            } catch {
+              server = null;
+            }
+            return {
+              server,
+              publisher: await readStats(pcs?.publisher),
+              subscriber: await readStats(pcs?.subscriber),
+            };
+          }),
+        ),
     };
     window.mudrixCall = bridge;
     window.dispatchEvent(new Event("mudrixcallready"));

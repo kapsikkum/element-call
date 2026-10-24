@@ -81,6 +81,7 @@ import { useTrackProcessorObservable$ } from "../livekit/TrackProcessorContext.t
 import { type Layout } from "../state/layout-types.ts";
 import { ObservableScope } from "../state/ObservableScope.ts";
 import { CallFooter, type FooterSnapshot } from "../components/CallFooter.tsx";
+import { mudrixHidesFooter, useMudrixCallBridge } from "../mudrix/bridge";
 import { SettingsIconButton } from "../button/Button.tsx";
 import { createCallFooterViewModel } from "../components/CallFooterViewModel.tsx";
 import { type ViewModel } from "../state/ViewModel.ts";
@@ -219,6 +220,7 @@ export const InCallView: FC<InCallViewProps> = ({
   const logger = rootLogger.getChild("[InCallView]");
   const { t } = useTranslation();
   const { sendReaction, toggleRaisedHand } = useReactionsSender();
+  useMudrixCallBridge(vm, sendReaction, toggleRaisedHand);
 
   useWakeLock();
   // TODO-MULTI-SFU This is unused now??
@@ -586,7 +588,7 @@ export const InCallView: FC<InCallViewProps> = ({
   );
 
   // Only hide the settings button if we have an AppBar header and we are showing the header
-  const footer = footerVm !== null && (
+  const footer = footerVm !== null && !mudrixHidesFooter() && (
     <CallFooter className={styles.footer} ref={footerRef} vm={footerVm} />
   );
   const allConnections = useBehavior(vm.allConnections$);

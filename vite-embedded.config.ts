@@ -29,6 +29,10 @@ export default defineConfig((env) =>
                 wait_for_key_rotation_ms: 5000,
                 delayed_leave_event_restart_ms: 4000,
                 delayed_leave_event_delay_ms: 18000,
+                // Mudrix: homeservers without delayed events (MSC4140, e.g. tuwunel) never
+                // send the leave for a client that vanished, so its membership lingers until
+                // it expires. Five minutes instead of four hours; live calls refresh it.
+                membership_event_expiry_ms: 300000,
               },
             },
           },

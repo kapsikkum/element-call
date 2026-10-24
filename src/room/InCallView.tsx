@@ -630,7 +630,7 @@ export const InCallView: FC<InCallViewProps> = ({
           <SettingsModal
             client={client}
             roomId={matrixRoom.roomId}
-            open={settingsOpen}
+            open={settingsOpen && !mudrixHidesFooter()}
             onDismiss={(): void => setSettingsOpen(false)}
             tab={settingsTab}
             onTabChange={setSettingsTab}

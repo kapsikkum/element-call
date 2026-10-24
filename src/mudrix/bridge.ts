@@ -10,6 +10,22 @@ import { combineLatest, of, switchMap } from "rxjs";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
 import { type ReactionOption, ReactionSet } from "../reactions";
+import {
+  backgroundBlur,
+  showHandRaisedTimer,
+  showReactions,
+  type Setting,
+} from "../settings/settings";
+
+/**
+ * EC settings the Mudrix settings page controls. EC's own settings modal is not shown when
+ * embedded in Mudrix; devices and sounds are handled by Mudrix itself.
+ */
+const MUDRIX_SETTINGS: Record<string, Setting<boolean>> = {
+  "background-blur": backgroundBlur,
+  "hand-raised-show-timer": showHandRaisedTimer,
+  "reactions-show": showReactions,
+};
 
 /**
  * The Mudrix client embeds Element Call same-origin and draws its own call controls. Instead of
@@ -26,7 +42,8 @@ export interface MudrixCallBridge {
   /** A reaction by its name in ReactionSet ("thumbsup", "party", …). */
   sendReaction(name: string): Promise<void>;
   toggleRaisedHand(): Promise<void>;
-  openSettings(): void;
+  /** Applies one of MUDRIX_SETTINGS to the running call (it is also stored in localStorage). */
+  setSetting(key: string, value: boolean): void;
   setLayout(layout: "grid" | "spotlight"): void;
   /** Calls `listener` now and on every change; returns an unsubscribe. */
   subscribe(listener: (state: MudrixCallState) => void): () => void;
@@ -39,7 +56,10 @@ declare global {
   }
 }
 
-/** `?hideFooter=true`: the embedding app draws its own controls, so EC's footer is not shown. */
+/**
+ * `?hideFooter=true`: the embedding app draws its own controls and settings, so EC's footer and
+ * settings modal are not shown.
+ */
 export function mudrixHidesFooter(): boolean {
   return (
     new URLSearchParams(window.location.search).get("hideFooter") === "true"
@@ -59,7 +79,7 @@ export function useMudrixCallBridge(
         if (reaction) await sendReaction(reaction);
       },
       toggleRaisedHand: () => toggleRaisedHand(),
-      openSettings: () => vm.setSettingsOpen$.value(true),
+      setSetting: (key, value) => MUDRIX_SETTINGS[key]?.setValue(value),
       setLayout: (layout) => vm.layoutSwitchVm$.value?.setLayout(layout),
       subscribe: (listener) => {
         const sub = combineLatest([
@@ -80,4 +100,34 @@ export function useMudrixCallBridge(
       if (window.mudrixCall === bridge) delete window.mudrixCall;
     };
   }, [vm, sendReaction, toggleRaisedHand]);
+}
+
+/**
+ * Each tile's view model, by media id. Tiles carry `data-mx-media-id`, so the embedding app can
+ * read a tile's state (`userId`, `type`, `speaking$`, …) without walking React internals.
+ */
+const mediaRefs = new Map<string, number>();
+
+declare global {
+  interface Window {
+    mudrixMedia?: Map<string, { id: string }>;
+  }
+}
+
+export function useMudrixMedia(vm: { id: string } | undefined): void {
+  useEffect(() => {
+    if (!vm) return;
+    const media = (window.mudrixMedia ??= new Map());
+    media.set(vm.id, vm);
+    mediaRefs.set(vm.id, (mediaRefs.get(vm.id) ?? 0) + 1);
+    return (): void => {
+      const left = (mediaRefs.get(vm.id) ?? 1) - 1;
+      if (left > 0) {
+        mediaRefs.set(vm.id, left);
+      } else {
+        mediaRefs.delete(vm.id);
+        if (media.get(vm.id) === vm) media.delete(vm.id);
+      }
+    };
+  }, [vm]);
 }

@@ -26,6 +26,7 @@ import { type ReactionOption } from "../reactions";
 import { ReactionIndicator } from "../reactions/ReactionIndicator";
 import { RTCConnectionStats } from "../RTCConnectionStats";
 import videoPlaceholder from "../graphics/video-placeholder.gif";
+import { useMudrixMedia } from "../mudrix/bridge";
 
 interface Props extends ComponentProps<typeof animated.div> {
   className?: string;
@@ -57,6 +58,8 @@ interface Props extends ComponentProps<typeof animated.div> {
   rtcBackendIdentity?: string;
   // The focus url, mainly for debugging purposes
   focusUrl?: string;
+  /** The tile's view model, exposed to the embedding Mudrix app. */
+  mudrixVm?: { id: string };
 }
 
 export const MediaView: FC<Props> = ({
@@ -89,9 +92,11 @@ export const MediaView: FC<Props> = ({
   videoStreamStats,
   rtcBackendIdentity,
   focusUrl,
+  mudrixVm,
   ...props
 }) => {
   const { t } = useTranslation();
+  useMudrixMedia(mudrixVm);
   const [handRaiseTimerVisible] = useSetting(showHandRaisedTimer);
   const [showConnectionStats] = useSetting(showConnectionStatsSetting);
 
@@ -128,6 +133,7 @@ export const MediaView: FC<Props> = ({
       data-video-enabled={video && videoEnabled}
       data-video-fit={videoFit}
       data-background={background}
+      data-mx-media-id={mudrixVm?.id}
       {...props}
     >
       <div className={styles.bg}>

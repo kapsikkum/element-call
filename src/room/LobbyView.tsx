@@ -34,6 +34,7 @@ import { type MatrixInfo, VideoPreview } from "./VideoPreview";
 import { type MuteStates } from "../state/MuteStates";
 import { InviteButton } from "../button/InviteButton";
 import { SettingsModal, defaultSettingsTab } from "../settings/SettingsModal";
+import { mudrixHidesFooter } from "../mudrix/bridge";
 import { useMediaQuery } from "../useMediaQuery";
 import { E2eeType } from "../e2ee/e2eeType";
 import { Link } from "../button/Link";
@@ -263,7 +264,7 @@ export const LobbyView: FC<Props> = ({
       {client && (
         <SettingsModal
           client={client}
-          open={settingsModalOpen}
+          open={settingsModalOpen && !mudrixHidesFooter()}
           onDismiss={closeSettings}
           tab={settingsTab}
           onTabChange={setSettingsTab}

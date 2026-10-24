@@ -68,6 +68,7 @@ interface SpotlightItemBaseProps {
   background: "solid" | "transparent";
   focusable: boolean;
   "aria-hidden"?: boolean;
+  mudrixVm?: { id: string };
 }
 
 interface SpotlightMemberMediaItemBaseProps extends SpotlightItemBaseProps {
@@ -296,6 +297,7 @@ const SpotlightItem: FC<SpotlightItemProps> = ({
   const baseProps: SpotlightItemBaseProps & RefAttributes<HTMLDivElement> = {
     ref,
     "data-id": vm.id,
+    mudrixVm: vm,
     className: classNames(className, styles.item, { [styles.snap]: snap }),
     targetWidth,
     targetHeight,

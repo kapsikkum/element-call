@@ -81,6 +81,7 @@ const RingingMediaTile: FC<RingingMediaTileProps> = ({
       className={classNames(className, styles.tile)}
       video={undefined}
       userId={vm.userId}
+      mudrixVm={vm}
       unencryptedWarning={false}
       status={
         showStatus && (
@@ -188,6 +189,7 @@ const UserMediaTile: FC<UserMediaTileProps> = ({
       ref={ref}
       video={video}
       userId={vm.userId}
+      mudrixVm={vm}
       unencryptedWarning={unencryptedWarning}
       videoEnabled={videoEnabled}
       videoFit={videoFit}

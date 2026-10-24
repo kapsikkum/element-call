@@ -6,6 +6,7 @@ Please see LICENSE in the repository root for full details.
 */
 
 import { useEffect } from "react";
+import { logger } from "matrix-js-sdk/lib/logger";
 import { combineLatest, of, switchMap } from "rxjs";
 
 import { type CallViewModel } from "../state/CallViewModel/CallViewModel";
@@ -72,11 +73,22 @@ export function useMudrixCallBridge(
   toggleRaisedHand: () => Promise<void>,
 ): void {
   useEffect(() => {
+    let reactionInFlight = false;
     const bridge: MudrixCallBridge = {
       toggleScreenShare: () => vm.toggleScreenSharing?.(),
       sendReaction: async (name) => {
         const reaction = ReactionSet.find((r) => r.name === name);
-        if (reaction) await sendReaction(reaction);
+        // One at a time: a burst of clicks would otherwise send a burst of room events (which
+        // the server rate-limits) while EC is still waiting to see its own reaction come back.
+        if (!reaction || reactionInFlight) return;
+        reactionInFlight = true;
+        try {
+          await sendReaction(reaction);
+        } catch (e) {
+          logger.warn("Mudrix reaction failed", e);
+        } finally {
+          reactionInFlight = false;
+        }
       },
       toggleRaisedHand: () => toggleRaisedHand(),
       setSetting: (key, value) => MUDRIX_SETTINGS[key]?.setValue(value),
